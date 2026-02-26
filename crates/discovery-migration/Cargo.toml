@@ -1,0 +1,9 @@
+[package]
+name = "discovery-migration"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+sea-orm-migration = { workspace = true }
+discovery-entities = { path = "../discovery-entities" }
+tokio = { workspace = true }

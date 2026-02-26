@@ -1,0 +1,61 @@
+[workspace]
+resolver = "2"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["ToDeskAI Team"]
+license = "Proprietary"
+
+[workspace.dependencies]
+# Async
+tokio = { version = "1", features = ["full"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Error handling
+thiserror = "2"
+anyhow = "1"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# HTTP
+axum = "0.8"
+axum-server = { version = "0.8", features = ["tls-rustls"] }
+tower = "0.5"
+tower-http = { version = "0.6", features = ["cors", "trace"] }
+
+# Database
+sea-orm = { version = "1.1", features = ["sqlx-sqlite", "runtime-tokio-rustls", "macros", "with-chrono", "with-uuid"] }
+sea-orm-migration = { version = "1.1", features = ["sqlx-sqlite", "runtime-tokio-rustls"] }
+
+# Auth & Crypto
+jsonwebtoken = { version = "10", features = ["aws_lc_rs"] }
+hmac = "0.12"
+sha2 = "0.10"
+subtle = "2"
+
+# TLS
+rcgen = "0.14"
+rustls-acme = { version = "0.15", features = ["axum"] }
+rustls = "0.23"
+futures-util = "0.3"
+
+# Utils
+clap = { version = "4", features = ["derive"] }
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+base64 = "0.22"
+hex = "0.4"
+rand = "0.9"
+getrandom = { version = "0.3", features = ["std"] }
+
+[profile.release]
+lto = true
+opt-level = "s"
+strip = true
