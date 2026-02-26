@@ -24,7 +24,7 @@ Discovery server — только сообщает серверам адреса
   "publicUrl": "https://server.example.com:9090",
   "version": "0.1.0",
   "publicKey": "base64-x25519-pubkey",
-  "timestamp": "2026-02-26T10:00:00Z",
+  "timestamp": "<current-utc-timestamp>",
   "clusterSecretHmac": "base64(HMAC-SHA256(...))"
 }
 ```
