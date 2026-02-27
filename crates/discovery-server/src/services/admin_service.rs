@@ -37,5 +37,10 @@ pub async fn get_stats(db: &DatabaseConnection) -> Result<Stats, AppError> {
     cluster_ids.dedup();
     let clusters = cluster_ids.len();
 
-    Ok(Stats { total, active, inactive, clusters })
+    Ok(Stats {
+        total,
+        active,
+        inactive,
+        clusters,
+    })
 }

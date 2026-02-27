@@ -18,14 +18,29 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(Servers::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(Servers::Id).string().not_null().primary_key())
-                    .col(ColumnDef::new(Servers::ServerId).string().not_null().unique_key())
+                    .col(
+                        ColumnDef::new(Servers::Id)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(Servers::ServerId)
+                            .string()
+                            .not_null()
+                            .unique_key(),
+                    )
                     .col(ColumnDef::new(Servers::ClusterId).string().not_null())
                     .col(ColumnDef::new(Servers::PublicUrl).string().not_null())
                     .col(ColumnDef::new(Servers::Version).string().not_null())
                     .col(ColumnDef::new(Servers::PublicKey).string().not_null())
                     .col(ColumnDef::new(Servers::LastSeen).string().not_null())
-                    .col(ColumnDef::new(Servers::Active).boolean().not_null().default(true))
+                    .col(
+                        ColumnDef::new(Servers::Active)
+                            .boolean()
+                            .not_null()
+                            .default(true),
+                    )
                     .col(ColumnDef::new(Servers::RegisteredAt).string().not_null())
                     .to_owned(),
             )
