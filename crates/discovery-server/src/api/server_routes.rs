@@ -173,9 +173,7 @@ fn get_cluster_secret(cluster_id: &str) -> Result<String, AppError> {
     // Конвертируем cluster_id в имя env переменной: "acme-corp" → "CLUSTER_SECRET_ACME_CORP"
     let env_key = format!(
         "CLUSTER_SECRET_{}",
-        cluster_id
-            .to_uppercase()
-            .replace(['-', '.'], "_")
+        cluster_id.to_uppercase().replace(['-', '.'], "_")
     );
 
     std::env::var(&env_key).map_err(|_| {
