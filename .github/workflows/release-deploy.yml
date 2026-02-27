@@ -27,6 +27,23 @@ jobs:
           echo "$DEPLOY_KEY" > /tmp/deploy_key && chmod 600 /tmp/deploy_key
           scp -i /tmp/deploy_key -o StrictHostKeyChecking=no \
             target/release/discovery-server \
-            "$DEPLOY_USER@$DEPLOY_HOST:/usr/local/bin/discovery-server"
-          ssh -i /tmp/deploy_key -o StrictHostKeyChecking=no "$DEPLOY_USER@$DEPLOY_HOST" \
-            "systemctl restart discovery-server && curl -sf http://localhost:3000/health"
+            "$DEPLOY_USER@$DEPLOY_HOST:/usr/local/bin/discovery-server.new"
+          ssh -i /tmp/deploy_key -o StrictHostKeyChecking=no "$DEPLOY_USER@$DEPLOY_HOST" "
+            mv /usr/local/bin/discovery-server.new /usr/local/bin/discovery-server
+            chmod +x /usr/local/bin/discovery-server
+            systemctl restart discovery-server
+            echo 'Ожидание запуска сервиса...'
+            for i in \$(seq 1 30); do
+              sleep 3
+              if curl -sf --max-time 5 https://discovery.todeskai.ru/health > /dev/null 2>&1; then
+                echo \"Health check пройден за \$((i*3)) сек\"
+                exit 0
+              fi
+              echo \"Попытка \$i/30...\"
+            done
+            echo 'Health check не прошёл за 90 сек'
+            systemctl status discovery-server
+            journalctl -u discovery-server -n 50
+            exit 1
+          "
+          rm -f /tmp/deploy_key
