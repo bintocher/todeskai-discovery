@@ -175,8 +175,7 @@ fn get_cluster_secret(cluster_id: &str) -> Result<String, AppError> {
         "CLUSTER_SECRET_{}",
         cluster_id
             .to_uppercase()
-            .replace('-', "_")
-            .replace('.', "_")
+            .replace(['-', '.'], "_")
     );
 
     std::env::var(&env_key).map_err(|_| {

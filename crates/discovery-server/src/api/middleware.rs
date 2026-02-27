@@ -91,7 +91,7 @@ pub fn create_server_token(
 
 // ── Вспомогательные функции ──────────────────────────────────────────────────
 
-fn extract_bearer_token<'a>(parts: &'a Parts) -> Result<&'a str, AppError> {
+fn extract_bearer_token(parts: &Parts) -> Result<&str, AppError> {
     parts
         .headers
         .get("Authorization")
