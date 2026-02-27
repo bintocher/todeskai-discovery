@@ -38,9 +38,7 @@ impl RateLimiter {
 
         // Периодическая очистка при росте таблицы
         if entries.len() > 1000 {
-            entries.retain(|_, v| {
-                now.duration_since(v.window_start).as_secs() < self.window_secs
-            });
+            entries.retain(|_, v| now.duration_since(v.window_start).as_secs() < self.window_secs);
         }
 
         let entry = entries.entry(key.to_string()).or_insert(RateEntry {

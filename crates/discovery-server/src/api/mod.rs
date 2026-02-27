@@ -34,12 +34,13 @@ pub fn build_router(state: AppState) -> Router {
     // Rate limiter: 60 запросов в минуту на IP
     let limiter = state.rate_limiter.clone();
 
-    let public_routes = Router::new()
-        .merge(server_routes::routes())
-        .layer(axum::middleware::from_fn(move |req, next| {
-            let limiter = limiter.clone();
-            rate_limit::rate_limit_middleware(limiter, req, next)
-        }));
+    let public_routes =
+        Router::new()
+            .merge(server_routes::routes())
+            .layer(axum::middleware::from_fn(move |req, next| {
+                let limiter = limiter.clone();
+                rate_limit::rate_limit_middleware(limiter, req, next)
+            }));
 
     let admin_routes = admin_routes::routes();
     let auth_routes = auth_routes::routes();

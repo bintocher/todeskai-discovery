@@ -3,8 +3,7 @@
 use chrono::Utc;
 use discovery_entities::servers::{ActiveModel, Column, Entity as ServerEntity};
 use sea_orm::{
-    ActiveModelTrait, ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait,
-    QueryFilter,
+    ActiveModelTrait, ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter,
 };
 
 /// Запустить бесконечный цикл очистки (каждую минуту).

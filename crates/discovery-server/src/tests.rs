@@ -64,10 +64,23 @@ mod tests {
         let public_url = "https://server.example.com:9090";
         let timestamp = "2026-02-26T10:00:00Z";
 
-        let hmac_b64 = make_hmac("correct-secret", server_id, cluster_id, public_url, timestamp);
+        let hmac_b64 = make_hmac(
+            "correct-secret",
+            server_id,
+            cluster_id,
+            public_url,
+            timestamp,
+        );
 
         assert!(
-            !verify_hmac("wrong-secret", server_id, cluster_id, public_url, timestamp, &hmac_b64),
+            !verify_hmac(
+                "wrong-secret",
+                server_id,
+                cluster_id,
+                public_url,
+                timestamp,
+                &hmac_b64
+            ),
             "HMAC с неверным секретом должен быть отклонён"
         );
     }
@@ -119,8 +132,14 @@ mod tests {
         let password = "SuperSecret123!";
         let hash = hash_password(password);
 
-        assert!(verify_password(password, &hash), "Верный пароль должен проходить проверку");
-        assert!(!verify_password("WrongPassword", &hash), "Неверный пароль должен отклоняться");
+        assert!(
+            verify_password(password, &hash),
+            "Верный пароль должен проходить проверку"
+        );
+        assert!(
+            !verify_password("WrongPassword", &hash),
+            "Неверный пароль должен отклоняться"
+        );
     }
 
     // ── HTTP интеграционные тесты ─────────────────────────────────────────────
@@ -133,13 +152,12 @@ mod tests {
         use tower::ServiceExt;
 
         async fn build_test_app() -> axum::Router {
-            use crate::api::{build_router, AppState, rate_limit::RateLimiter};
+            use crate::api::{build_router, rate_limit::RateLimiter, AppState};
             use crate::config::hash_password;
             use discovery_migration::{Migrator, MigratorTrait};
             use sea_orm::{Database, DatabaseConnection};
 
-            let db: DatabaseConnection =
-                Database::connect("sqlite::memory:").await.unwrap();
+            let db: DatabaseConnection = Database::connect("sqlite::memory:").await.unwrap();
             Migrator::up(&db, None).await.unwrap();
 
             let state = AppState {

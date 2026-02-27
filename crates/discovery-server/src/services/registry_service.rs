@@ -4,8 +4,7 @@ use crate::error::AppError;
 use chrono::Utc;
 use discovery_entities::servers::{ActiveModel, Column, Entity as ServerEntity, Model};
 use sea_orm::{
-    ActiveModelTrait, ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait,
-    QueryFilter,
+    ActiveModelTrait, ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter,
 };
 use uuid::Uuid;
 
@@ -61,10 +60,7 @@ pub async fn register_server(
 }
 
 /// Обновить время последнего heartbeat для сервера.
-pub async fn heartbeat(
-    db: &DatabaseConnection,
-    server_id: &str,
-) -> Result<(), AppError> {
+pub async fn heartbeat(db: &DatabaseConnection, server_id: &str) -> Result<(), AppError> {
     let now = Utc::now().to_rfc3339();
 
     let record = ServerEntity::find()
@@ -95,10 +91,7 @@ pub async fn get_cluster_servers(
 }
 
 /// Удалить сервер по server_id.
-pub async fn delete_server(
-    db: &DatabaseConnection,
-    server_id: &str,
-) -> Result<(), AppError> {
+pub async fn delete_server(db: &DatabaseConnection, server_id: &str) -> Result<(), AppError> {
     let record = ServerEntity::find()
         .filter(Column::ServerId.eq(server_id))
         .one(db)

@@ -118,7 +118,11 @@ async fn do_heartbeat(
     }
 
     heartbeat(&state.db, &req.server_id).await?;
-    tracing::debug!("Heartbeat: сервер {} (peers: {})", req.server_id, req.peer_count);
+    tracing::debug!(
+        "Heartbeat: сервер {} (peers: {})",
+        req.server_id,
+        req.peer_count
+    );
 
     Ok(Json(serde_json::json!({ "ok": true })))
 }
@@ -142,7 +146,9 @@ async fn get_cluster(
         })
         .collect();
 
-    Ok(Json(ClusterResponse { servers: server_infos }))
+    Ok(Json(ClusterResponse {
+        servers: server_infos,
+    }))
 }
 
 /// DELETE /api/v1/servers/{server_id} — удаление сервера.
@@ -153,9 +159,7 @@ async fn deregister(
 ) -> Result<Json<serde_json::Value>, AppError> {
     // Сервер может удалить только себя
     if claims.sub != server_id {
-        return Err(AppError::Unauthorized(
-            "Нельзя удалить чужой сервер".into(),
-        ));
+        return Err(AppError::Unauthorized("Нельзя удалить чужой сервер".into()));
     }
 
     delete_server(&state.db, &server_id).await?;
@@ -169,7 +173,7 @@ fn get_cluster_secret(cluster_id: &str) -> Result<String, AppError> {
     // Конвертируем cluster_id в имя env переменной: "acme-corp" → "CLUSTER_SECRET_ACME_CORP"
     let env_key = format!(
         "CLUSTER_SECRET_{}",
-        cluster_id.to_uppercase().replace('-', "_").replace('.', "_")
+        cluster_id.to_uppercase().replace(['-', '.'], "_")
     );
 
     std::env::var(&env_key).map_err(|_| {

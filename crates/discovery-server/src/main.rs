@@ -5,14 +5,21 @@ use discovery_server::config::{hash_password, ServerConfig, TlsMode};
 use tracing_subscriber::EnvFilter;
 
 #[derive(Parser)]
-#[command(name = "discovery-server", about = "ToDeskAI Discovery Server — реестр серверов кластера")]
+#[command(
+    name = "discovery-server",
+    about = "ToDeskAI Discovery Server — реестр серверов кластера"
+)]
 struct Cli {
     /// Адрес для прослушивания (host:port)
     #[arg(long, default_value = "0.0.0.0:3000")]
     listen: String,
 
     /// URL базы данных
-    #[arg(long, default_value = "sqlite:./discovery.db?mode=rwc", env = "DATABASE_URL")]
+    #[arg(
+        long,
+        default_value = "sqlite:./discovery.db?mode=rwc",
+        env = "DATABASE_URL"
+    )]
     db_url: String,
 
     /// Режим TLS: none, self-signed, acme
