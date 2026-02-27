@@ -90,6 +90,20 @@ pub async fn get_cluster_servers(
     Ok(servers)
 }
 
+/// Найти сервер по server_id (для resolve).
+/// Возвращает None если сервер не найден или неактивен.
+pub async fn get_server_by_id(
+    db: &DatabaseConnection,
+    server_id: &str,
+) -> Result<Option<Model>, AppError> {
+    let server = ServerEntity::find()
+        .filter(Column::ServerId.eq(server_id))
+        .filter(Column::Active.eq(true))
+        .one(db)
+        .await?;
+    Ok(server)
+}
+
 /// Удалить сервер по server_id.
 pub async fn delete_server(db: &DatabaseConnection, server_id: &str) -> Result<(), AppError> {
     let record = ServerEntity::find()
