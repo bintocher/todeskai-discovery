@@ -140,10 +140,8 @@ async fn register_simple(
         return Err(AppError::BadRequest("server_id и public_url обязательны".into()));
     }
 
-    // SSRF защита
-    if !req.public_url.starts_with("http://") && !req.public_url.starts_with("https://") {
-        return Err(AppError::BadRequest("public_url должен начинаться с http:// или https://".into()));
-    }
+    // SSRF защита: схема + приватные IP
+    validate_public_url(&req.public_url)?;
 
     let server_id = registry_service::register_server(
         &state.db,
@@ -240,6 +238,38 @@ async fn deregister(
     tracing::info!("Сервер дерегистрирован: {server_id}");
 
     Ok(Json(serde_json::json!({ "ok": true })))
+}
+
+/// Валидация public_url: схема http(s) + блокировка приватных IP/localhost.
+fn validate_public_url(url: &str) -> Result<(), AppError> {
+    let parsed = url::Url::parse(url)
+        .map_err(|_| AppError::BadRequest("Некорректный URL".into()))?;
+
+    match parsed.scheme() {
+        "http" | "https" => {}
+        _ => return Err(AppError::BadRequest("public_url должен начинаться с http:// или https://".into())),
+    }
+
+    if let Some(host) = parsed.host_str() {
+        let lower = host.to_lowercase();
+        if lower == "localhost" || lower == "127.0.0.1" || lower == "::1" || lower == "0.0.0.0" {
+            return Err(AppError::BadRequest("public_url не может указывать на localhost".into()));
+        }
+        // Блокировка приватных IP-диапазонов
+        if let Ok(ip) = host.parse::<std::net::IpAddr>() {
+            let is_private = match ip {
+                std::net::IpAddr::V4(v4) => v4.is_private() || v4.is_loopback() || v4.is_link_local(),
+                std::net::IpAddr::V6(v6) => v6.is_loopback(),
+            };
+            if is_private {
+                return Err(AppError::BadRequest("public_url не может указывать на приватный IP".into()));
+            }
+        }
+    } else {
+        return Err(AppError::BadRequest("public_url не содержит хост".into()));
+    }
+
+    Ok(())
 }
 
 /// Получить cluster_secret из env.

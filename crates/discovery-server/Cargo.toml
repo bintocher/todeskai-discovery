@@ -34,6 +34,7 @@ futures-util = { workspace = true }
 sea-orm = { workspace = true }
 hex = { workspace = true }
 getrandom = { workspace = true }
+url = { workspace = true }
 discovery-entities = { path = "../discovery-entities" }
 discovery-migration = { path = "../discovery-migration" }
 

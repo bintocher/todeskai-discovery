@@ -54,6 +54,7 @@ base64 = "0.22"
 hex = "0.4"
 rand = "0.9"
 getrandom = { version = "0.3", features = ["std"] }
+url = "2"
 
 [profile.release]
 lto = true
