@@ -42,7 +42,7 @@ subtle = "2"
 
 # TLS
 rcgen = "0.14"
-rustls = "0.23"
+rustls = { version = "0.23", features = ["aws-lc-rs"] }
 
 # Utils
 clap = { version = "4", features = ["derive"] }
