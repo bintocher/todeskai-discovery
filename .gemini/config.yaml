@@ -1,0 +1,24 @@
+# Конфигурация Gemini Code Assist для ToDeskAI Discovery
+# Документация: https://developers.google.com/gemini-code-assist/docs/customize-gemini-behavior-github
+
+have_fun: false
+
+# Язык ответов — ТОЛЬКО русский
+custom_instructions: "ВСЕГДА отвечай ТОЛЬКО НА РУССКОМ ЯЗЫКЕ. Все комментарии к PR, саммари, ревью и любой текст — на русском. Технические термины и идентификаторы кода оставляй на английском."
+
+memory_config:
+  disabled: false
+
+code_review:
+  disable: false
+  comment_severity_threshold: LOW
+  max_review_comments: -1
+  pull_request_opened:
+    help: false
+    summary: false
+    code_review: true
+    include_drafts: true
+
+ignore_patterns:
+  - "*.lock"
+  - "target/**"
