@@ -23,21 +23,18 @@ pub struct ServerConfig {
     /// Хэш пароля администратора (SHA-256 hex)
     pub admin_password_hash: String,
 
-    /// Email контакта для ACME
-    pub contact_email: String,
+    /// Путь к PEM-файлу сертификата (для tls_mode = cert)
+    pub tls_cert: String,
 
-    /// Директория для хранения ACME-ключей
-    pub keys_dir: String,
-
-    /// Использовать staging ACME-сервер
-    pub acme_staging: bool,
+    /// Путь к PEM-файлу приватного ключа (для tls_mode = cert)
+    pub tls_key: String,
 }
 
 #[derive(Debug, Clone)]
 pub enum TlsMode {
     None,
     SelfSigned,
-    Acme,
+    Cert,
 }
 
 impl std::str::FromStr for TlsMode {
@@ -47,9 +44,9 @@ impl std::str::FromStr for TlsMode {
         match s.to_lowercase().as_str() {
             "none" => Ok(TlsMode::None),
             "self-signed" | "selfsigned" => Ok(TlsMode::SelfSigned),
-            "acme" => Ok(TlsMode::Acme),
+            "cert" => Ok(TlsMode::Cert),
             other => Err(format!(
-                "Неизвестный режим TLS: {other}. Допустимые: none, self-signed, acme"
+                "Неизвестный режим TLS: {other}. Допустимые: none, self-signed, cert"
             )),
         }
     }
@@ -60,7 +57,7 @@ impl std::fmt::Display for TlsMode {
         match self {
             TlsMode::None => write!(f, "none"),
             TlsMode::SelfSigned => write!(f, "self-signed"),
-            TlsMode::Acme => write!(f, "acme"),
+            TlsMode::Cert => write!(f, "cert"),
         }
     }
 }
