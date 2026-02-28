@@ -43,11 +43,17 @@ struct Cli {
     admin_password: Option<String>,
 
     /// Путь к PEM-файлу сертификата (для --tls-mode cert)
-    #[arg(long, default_value = "/etc/letsencrypt/live/discovery.todeskai.ru/fullchain.pem")]
+    #[arg(
+        long,
+        default_value = "/etc/letsencrypt/live/discovery.todeskai.ru/fullchain.pem"
+    )]
     tls_cert: String,
 
     /// Путь к PEM-файлу приватного ключа (для --tls-mode cert)
-    #[arg(long, default_value = "/etc/letsencrypt/live/discovery.todeskai.ru/privkey.pem")]
+    #[arg(
+        long,
+        default_value = "/etc/letsencrypt/live/discovery.todeskai.ru/privkey.pem"
+    )]
     tls_key: String,
 }
 

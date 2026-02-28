@@ -73,9 +73,7 @@ async fn serve_cert(
     let cert_path = &config.tls_cert;
     let key_path = &config.tls_key;
 
-    info!(
-        "Запуск HTTPS сервера на {addr} (сертификат: {cert_path}, ключ: {key_path})"
-    );
+    info!("Запуск HTTPS сервера на {addr} (сертификат: {cert_path}, ключ: {key_path})");
 
     let rustls_config =
         axum_server::tls_rustls::RustlsConfig::from_pem_file(cert_path, key_path).await?;
