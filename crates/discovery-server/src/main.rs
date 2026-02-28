@@ -22,11 +22,11 @@ struct Cli {
     )]
     db_url: String,
 
-    /// Режим TLS: none, self-signed, acme
+    /// Режим TLS: none, self-signed, cert
     #[arg(long, default_value = "none")]
     tls_mode: String,
 
-    /// Домен для ACME / SAN
+    /// Домен для self-signed сертификата
     #[arg(long, default_value = "discovery.todeskai.ru")]
     domain: String,
 
@@ -42,17 +42,19 @@ struct Cli {
     #[arg(long, env = "ADMIN_PASSWORD")]
     admin_password: Option<String>,
 
-    /// Email для ACME-контакта
-    #[arg(long, default_value = "admin@todeskai.ru")]
-    contact_email: String,
+    /// Путь к PEM-файлу сертификата (для --tls-mode cert)
+    #[arg(
+        long,
+        default_value = "/etc/letsencrypt/live/discovery.todeskai.ru/fullchain.pem"
+    )]
+    tls_cert: String,
 
-    /// Директория для ACME-ключей
-    #[arg(long, default_value = "/etc/discovery/keys")]
-    keys_dir: String,
-
-    /// Использовать staging ACME-сервер
-    #[arg(long)]
-    acme_staging: bool,
+    /// Путь к PEM-файлу приватного ключа (для --tls-mode cert)
+    #[arg(
+        long,
+        default_value = "/etc/letsencrypt/live/discovery.todeskai.ru/privkey.pem"
+    )]
+    tls_key: String,
 }
 
 #[tokio::main]
@@ -92,9 +94,8 @@ async fn main() -> anyhow::Result<()> {
         jwt_secret,
         admin_username: cli.admin_username,
         admin_password_hash,
-        contact_email: cli.contact_email,
-        keys_dir: cli.keys_dir,
-        acme_staging: cli.acme_staging,
+        tls_cert: cli.tls_cert,
+        tls_key: cli.tls_key,
     };
 
     discovery_server::run(config).await

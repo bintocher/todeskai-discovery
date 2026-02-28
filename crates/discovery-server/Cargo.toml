@@ -28,9 +28,7 @@ hmac = { workspace = true }
 sha2 = { workspace = true }
 subtle = { workspace = true }
 rcgen = { workspace = true }
-rustls-acme = { workspace = true }
 rustls = { workspace = true }
-futures-util = { workspace = true }
 sea-orm = { workspace = true }
 hex = { workspace = true }
 getrandom = { workspace = true }

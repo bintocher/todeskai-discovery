@@ -42,9 +42,7 @@ subtle = "2"
 
 # TLS
 rcgen = "0.14"
-rustls-acme = { version = "0.15", features = ["axum"] }
 rustls = "0.23"
-futures-util = "0.3"
 
 # Utils
 clap = { version = "4", features = ["derive"] }

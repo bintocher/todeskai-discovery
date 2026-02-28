@@ -123,7 +123,10 @@ async fn register_cluster(
     .await?;
 
     let token = create_server_token(&server_id, &req.cluster_id, &state.jwt_secret)?;
-    tracing::info!("Кластерная регистрация: {server_id} (cluster: {})", req.cluster_id);
+    tracing::info!(
+        "Кластерная регистрация: {server_id} (cluster: {})",
+        req.cluster_id
+    );
 
     Ok(Json(RegisterResponse { token, server_id }))
 }
@@ -137,7 +140,9 @@ async fn register_simple(
     Json(req): Json<SimpleRegisterRequest>,
 ) -> Result<Json<RegisterResponse>, AppError> {
     if req.server_id.is_empty() || req.public_url.is_empty() {
-        return Err(AppError::BadRequest("server_id и public_url обязательны".into()));
+        return Err(AppError::BadRequest(
+            "server_id и public_url обязательны".into(),
+        ));
     }
 
     // SSRF защита: схема + приватные IP
@@ -168,7 +173,9 @@ async fn do_heartbeat(
     Json(req): Json<HeartbeatRequest>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     if claims.sub != req.server_id {
-        return Err(AppError::Unauthorized("server_id не совпадает с токеном".into()));
+        return Err(AppError::Unauthorized(
+            "server_id не совпадает с токеном".into(),
+        ));
     }
 
     heartbeat(&state.db, &req.server_id).await?;
@@ -198,7 +205,10 @@ async fn resolve_server(
             version: server.version,
             last_seen: server.last_seen,
         })),
-        None => Err(AppError::NotFound(format!("Сервер {} не найден", req.server_id))),
+        None => Err(AppError::NotFound(format!(
+            "Сервер {} не найден",
+            req.server_id
+        ))),
     }
 }
 
@@ -221,7 +231,9 @@ async fn get_cluster(
         })
         .collect();
 
-    Ok(Json(ClusterResponse { servers: server_infos }))
+    Ok(Json(ClusterResponse {
+        servers: server_infos,
+    }))
 }
 
 /// DELETE /api/v1/servers/{server_id} — дерегистрация.
@@ -242,27 +254,37 @@ async fn deregister(
 
 /// Валидация public_url: схема http(s) + блокировка приватных IP/localhost.
 fn validate_public_url(url: &str) -> Result<(), AppError> {
-    let parsed = url::Url::parse(url)
-        .map_err(|_| AppError::BadRequest("Некорректный URL".into()))?;
+    let parsed =
+        url::Url::parse(url).map_err(|_| AppError::BadRequest("Некорректный URL".into()))?;
 
     match parsed.scheme() {
         "http" | "https" => {}
-        _ => return Err(AppError::BadRequest("public_url должен начинаться с http:// или https://".into())),
+        _ => {
+            return Err(AppError::BadRequest(
+                "public_url должен начинаться с http:// или https://".into(),
+            ))
+        }
     }
 
     if let Some(host) = parsed.host_str() {
         let lower = host.to_lowercase();
         if lower == "localhost" || lower == "127.0.0.1" || lower == "::1" || lower == "0.0.0.0" {
-            return Err(AppError::BadRequest("public_url не может указывать на localhost".into()));
+            return Err(AppError::BadRequest(
+                "public_url не может указывать на localhost".into(),
+            ));
         }
         // Блокировка приватных IP-диапазонов
         if let Ok(ip) = host.parse::<std::net::IpAddr>() {
             let is_private = match ip {
-                std::net::IpAddr::V4(v4) => v4.is_private() || v4.is_loopback() || v4.is_link_local(),
+                std::net::IpAddr::V4(v4) => {
+                    v4.is_private() || v4.is_loopback() || v4.is_link_local()
+                }
                 std::net::IpAddr::V6(v6) => v6.is_loopback(),
             };
             if is_private {
-                return Err(AppError::BadRequest("public_url не может указывать на приватный IP".into()));
+                return Err(AppError::BadRequest(
+                    "public_url не может указывать на приватный IP".into(),
+                ));
             }
         }
     } else {
