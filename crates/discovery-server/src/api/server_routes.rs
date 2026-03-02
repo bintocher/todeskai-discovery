@@ -219,7 +219,10 @@ async fn resolve_server(
     match get_server_by_id(&state.db, &req.server_id).await? {
         Some(server) => {
             let multiaddrs: Vec<String> = serde_json::from_str(&server.multiaddrs)
-                .unwrap_or_default();
+                .unwrap_or_else(|err| {
+                    tracing::warn!("Ошибка парсинга multiaddrs для server_id '{}': {}", server.server_id, err);
+                    Vec::new()
+                });
             Ok(Json(ServerInfo {
                 server_id: server.server_id,
                 peer_id: server.peer_id,
@@ -249,7 +252,10 @@ async fn get_cluster(
         .into_iter()
         .map(|s| {
             let multiaddrs: Vec<String> = serde_json::from_str(&s.multiaddrs)
-                .unwrap_or_default();
+                .unwrap_or_else(|err| {
+                    tracing::warn!("Ошибка парсинга multiaddrs для server_id '{}': {}", s.server_id, err);
+                    Vec::new()
+                });
             ServerInfo {
                 server_id: s.server_id,
                 peer_id: s.peer_id,
@@ -283,8 +289,8 @@ async fn deregister(
     Ok(Json(serde_json::json!({ "ok": true })))
 }
 
-/// Валидация public_url: только проверка схемы http(s).
-/// URL — метаданные; инстансы за NAT могут иметь LAN/localhost адреса.
+/// Валидация public_url: проверка схемы http(s) и блокировка loopback-адресов (SSRF).
+/// Приватные IP разрешены (серверы за NAT), но loopback (127.0.0.0/8, [::1]) — запрещены.
 fn validate_public_url(url: &str) -> Result<(), AppError> {
     let parsed =
         url::Url::parse(url).map_err(|_| AppError::BadRequest("Некорректный URL".into()))?;
@@ -298,8 +304,22 @@ fn validate_public_url(url: &str) -> Result<(), AppError> {
         }
     }
 
-    if parsed.host_str().is_none() {
-        return Err(AppError::BadRequest("public_url не содержит хост".into()));
+    let host = parsed
+        .host_str()
+        .ok_or_else(|| AppError::BadRequest("public_url не содержит хост".into()))?;
+
+    // Блокируем loopback-адреса (защита от SSRF)
+    if host == "localhost" {
+        return Err(AppError::BadRequest(
+            "public_url не может указывать на localhost".into(),
+        ));
+    }
+    if let Ok(ip) = host.parse::<std::net::IpAddr>() {
+        if ip.is_loopback() {
+            return Err(AppError::BadRequest(
+                "public_url не может указывать на loopback-адрес (127.0.0.0/8, [::1])".into(),
+            ));
+        }
     }
 
     Ok(())

@@ -42,15 +42,48 @@ struct RelayBehaviour {
 const PROTOCOL_VERSION: &str = "/todeskai-relay/1.0.0";
 const IDLE_TIMEOUT: Duration = Duration::from_secs(300);
 
+/// Загрузить keypair из файла, либо сгенерировать новый и сохранить.
+/// Формат файла: raw Ed25519 bytes (64 байта).
+fn load_or_generate_keypair(path: &str) -> anyhow::Result<Keypair> {
+    let file_path = std::path::Path::new(path);
+
+    if file_path.exists() {
+        let bytes = std::fs::read(file_path)
+            .map_err(|e| anyhow::anyhow!("Ошибка чтения relay keypair из {path}: {e}"))?;
+        let keypair = Keypair::ed25519_from_bytes(bytes)
+            .map_err(|e| anyhow::anyhow!("Ошибка парсинга relay keypair из {path}: {e}"))?;
+        tracing::info!(path, "Relay keypair загружен из файла");
+        Ok(keypair)
+    } else {
+        let keypair = Keypair::generate_ed25519();
+        // Создаём директорию если нужно
+        if let Some(parent) = file_path.parent() {
+            std::fs::create_dir_all(parent)
+                .map_err(|e| anyhow::anyhow!("Ошибка создания директории для {path}: {e}"))?;
+        }
+        // Сохраняем raw bytes keypair
+        let kp_ref = keypair
+            .clone()
+            .try_into_ed25519()
+            .map_err(|e| anyhow::anyhow!("Keypair не Ed25519: {e}"))?;
+        std::fs::write(file_path, kp_ref.to_bytes())
+            .map_err(|e| anyhow::anyhow!("Ошибка сохранения relay keypair в {path}: {e}"))?;
+        tracing::info!(path, "Relay keypair сгенерирован и сохранён");
+        Ok(keypair)
+    }
+}
+
 /// Запустить relay node в background task.
 ///
-/// Генерирует Ed25519 keypair, слушает на указанном UDP порту (QUIC).
+/// Загружает Ed25519 keypair из файла (или генерирует новый),
+/// слушает на указанном UDP порту (QUIC).
 /// Обновляет `info_store` при появлении новых listen-адресов.
 pub async fn start_relay(
     listen_port: u16,
     info_store: RelayInfoStore,
+    relay_key_file: &str,
 ) -> anyhow::Result<()> {
-    let keypair = Keypair::generate_ed25519();
+    let keypair = load_or_generate_keypair(relay_key_file)?;
     let local_peer_id = keypair.public().to_peer_id();
 
     tracing::info!(peer_id = %local_peer_id, port = listen_port, "Запуск relay node");
@@ -117,6 +150,7 @@ async fn relay_event_loop(
 
                 let mut info = info_store.write().await;
                 let addr_str = full_addr.to_string();
+                // O(n) поиск допустим: relay имеет 1-3 listen-адреса, HashSet — избыточен
                 if !info.multiaddrs.contains(&addr_str) {
                     info.multiaddrs.push(addr_str);
                 }

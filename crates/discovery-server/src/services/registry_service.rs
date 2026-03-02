@@ -36,13 +36,19 @@ pub async fn register_server(
         .await?;
 
     if let Some(record) = existing {
+        // Проверяем, что public_key совпадает — защита от перехвата server_id
+        if record.public_key != data.public_key {
+            return Err(AppError::Unauthorized(
+                "public_key не совпадает с зарегистрированным — обновление запрещено".into(),
+            ));
+        }
+
         // Обновляем существующую запись
         let mut model: ActiveModel = record.into();
         model.public_url = Set(data.public_url);
         model.peer_id = Set(data.peer_id);
         model.multiaddrs = Set(data.multiaddrs);
         model.version = Set(data.version);
-        model.public_key = Set(data.public_key);
         model.last_seen = Set(now);
         model.active = Set(true);
         model.update(db).await?;

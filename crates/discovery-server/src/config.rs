@@ -31,6 +31,9 @@ pub struct ServerConfig {
 
     /// UDP порт для libp2p relay (0 = отключён)
     pub relay_port: u16,
+
+    /// Путь к файлу Ed25519 keypair для relay node
+    pub relay_key_file: String,
 }
 
 #[derive(Debug, Clone)]

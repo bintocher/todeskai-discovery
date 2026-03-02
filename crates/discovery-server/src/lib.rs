@@ -31,7 +31,7 @@ pub async fn run(config: ServerConfig) -> anyhow::Result<()> {
     let relay_info_store = relay::new_relay_info_store();
     let relay_port = config.relay_port;
     if relay_port > 0 {
-        relay::start_relay(relay_port, relay_info_store.clone()).await?;
+        relay::start_relay(relay_port, relay_info_store.clone(), &config.relay_key_file).await?;
     } else {
         info!("Relay отключён (relay_port = 0)");
     }
