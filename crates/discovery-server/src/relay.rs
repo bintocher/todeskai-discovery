@@ -43,30 +43,59 @@ const PROTOCOL_VERSION: &str = "/todeskai-relay/1.0.0";
 const IDLE_TIMEOUT: Duration = Duration::from_secs(300);
 
 /// Загрузить keypair из файла, либо сгенерировать новый и сохранить.
-/// Формат файла: raw Ed25519 bytes (64 байта).
+/// Формат файла: raw Ed25519 seed (32 байта).
 fn load_or_generate_keypair(path: &str) -> anyhow::Result<Keypair> {
     let file_path = std::path::Path::new(path);
 
     if file_path.exists() {
-        let bytes = std::fs::read(file_path)
+        let mut bytes = std::fs::read(file_path)
             .map_err(|e| anyhow::anyhow!("Ошибка чтения relay keypair из {path}: {e}"))?;
+        match bytes.len() {
+            64 => {
+                // Legacy формат (seed + public), берём первые 32 байта (seed)
+                bytes.truncate(32);
+            }
+            32 => { /* Текущий формат, всё в порядке */ }
+            other => {
+                return Err(anyhow::anyhow!(
+                    "Неверный размер файла ключа relay {path}: ожидалось 32 или 64 байта, найдено {other}"
+                ));
+            }
+        }
         let keypair = Keypair::ed25519_from_bytes(bytes)
             .map_err(|e| anyhow::anyhow!("Ошибка парсинга relay keypair из {path}: {e}"))?;
         tracing::info!(path, "Relay keypair загружен из файла");
         Ok(keypair)
     } else {
         let keypair = Keypair::generate_ed25519();
-        // Создаём директорию если нужно
         if let Some(parent) = file_path.parent() {
             std::fs::create_dir_all(parent)
                 .map_err(|e| anyhow::anyhow!("Ошибка создания директории для {path}: {e}"))?;
         }
-        // Сохраняем raw bytes keypair
+        // Сохраняем только seed (32 байта) — ed25519_from_bytes ожидает именно его
         let kp_ref = keypair
             .clone()
             .try_into_ed25519()
             .map_err(|e| anyhow::anyhow!("Keypair не Ed25519: {e}"))?;
-        std::fs::write(file_path, kp_ref.to_bytes())
+        let seed = &kp_ref.to_bytes()[..32];
+        #[cfg(unix)]
+        {
+            use std::io::Write;
+            use std::os::unix::fs::OpenOptionsExt;
+            let mut file = std::fs::OpenOptions::new()
+                .create(true)
+                .write(true)
+                .truncate(true)
+                .mode(0o600)
+                .open(file_path)
+                .map_err(|e| {
+                    anyhow::anyhow!("Ошибка открытия relay keypair для записи в {path}: {e}")
+                })?;
+            file.write_all(seed)
+                .map_err(|e| anyhow::anyhow!("Ошибка сохранения relay keypair в {path}: {e}"))?;
+        }
+        #[cfg(not(unix))]
+        std::fs::write(file_path, seed)
             .map_err(|e| anyhow::anyhow!("Ошибка сохранения relay keypair в {path}: {e}"))?;
         tracing::info!(path, "Relay keypair сгенерирован и сохранён");
         Ok(keypair)
@@ -109,9 +138,7 @@ pub async fn start_relay(
 }
 
 /// Построить Swarm для relay (server mode).
-fn build_relay_swarm(
-    keypair: Keypair,
-) -> anyhow::Result<libp2p::Swarm<RelayBehaviour>> {
+fn build_relay_swarm(keypair: Keypair) -> anyhow::Result<libp2p::Swarm<RelayBehaviour>> {
     let swarm = SwarmBuilder::with_existing_identity(keypair.clone())
         .with_tokio()
         .with_quic()
@@ -125,7 +152,11 @@ fn build_relay_swarm(
             ));
             let ping = ping::Behaviour::default();
 
-            Ok(RelayBehaviour { relay, identify, ping })
+            Ok(RelayBehaviour {
+                relay,
+                identify,
+                ping,
+            })
         })
         .map_err(|e| anyhow::anyhow!("Ошибка сборки relay behaviour: {e}"))?
         .with_swarm_config(|cfg| cfg.with_idle_connection_timeout(IDLE_TIMEOUT))
@@ -144,8 +175,7 @@ async fn relay_event_loop(
         match swarm.select_next_some().await {
             SwarmEvent::NewListenAddr { address, .. } => {
                 // Добавляем /p2p/<peer_id> к адресу для полного multiaddr
-                let full_addr = address
-                    .with(libp2p::multiaddr::Protocol::P2p(local_peer_id));
+                let full_addr = address.with(libp2p::multiaddr::Protocol::P2p(local_peer_id));
                 tracing::info!(addr = %full_addr, "Relay: слушаем на адресе");
 
                 let mut info = info_store.write().await;
@@ -161,7 +191,11 @@ async fn relay_event_loop(
                 tracing::info!(peer = %src_peer_id, "Relay: reservation принята");
             }
             SwarmEvent::Behaviour(RelayBehaviourEvent::Relay(
-                relay::Event::CircuitReqAccepted { src_peer_id, dst_peer_id, .. },
+                relay::Event::CircuitReqAccepted {
+                    src_peer_id,
+                    dst_peer_id,
+                    ..
+                },
             )) => {
                 tracing::info!(
                     src = %src_peer_id,
@@ -169,9 +203,11 @@ async fn relay_event_loop(
                     "Relay: circuit установлен"
                 );
             }
-            SwarmEvent::Behaviour(RelayBehaviourEvent::Relay(
-                relay::Event::CircuitClosed { src_peer_id, dst_peer_id, .. },
-            )) => {
+            SwarmEvent::Behaviour(RelayBehaviourEvent::Relay(relay::Event::CircuitClosed {
+                src_peer_id,
+                dst_peer_id,
+                ..
+            })) => {
                 tracing::debug!(
                     src = %src_peer_id,
                     dst = %dst_peer_id,

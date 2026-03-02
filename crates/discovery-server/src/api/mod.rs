@@ -58,9 +58,7 @@ pub fn build_router(state: AppState) -> Router {
 }
 
 /// GET /api/v1/relay-info — информация о relay ноде (публичный, без auth).
-async fn relay_info(
-    State(state): State<AppState>,
-) -> Json<crate::relay::RelayInfo> {
+async fn relay_info(State(state): State<AppState>) -> Json<crate::relay::RelayInfo> {
     let info = state.relay_info.read().await;
     Json(info.clone())
 }

@@ -218,9 +218,13 @@ async fn resolve_server(
 
     match get_server_by_id(&state.db, &req.server_id).await? {
         Some(server) => {
-            let multiaddrs: Vec<String> = serde_json::from_str(&server.multiaddrs)
-                .unwrap_or_else(|err| {
-                    tracing::warn!("Ошибка парсинга multiaddrs для server_id '{}': {}", server.server_id, err);
+            let multiaddrs: Vec<String> =
+                serde_json::from_str(&server.multiaddrs).unwrap_or_else(|err| {
+                    tracing::warn!(
+                        "Ошибка парсинга multiaddrs для server_id '{}': {}",
+                        server.server_id,
+                        err
+                    );
                     Vec::new()
                 });
             Ok(Json(ServerInfo {
@@ -251,9 +255,13 @@ async fn get_cluster(
     let server_infos = servers
         .into_iter()
         .map(|s| {
-            let multiaddrs: Vec<String> = serde_json::from_str(&s.multiaddrs)
-                .unwrap_or_else(|err| {
-                    tracing::warn!("Ошибка парсинга multiaddrs для server_id '{}': {}", s.server_id, err);
+            let multiaddrs: Vec<String> =
+                serde_json::from_str(&s.multiaddrs).unwrap_or_else(|err| {
+                    tracing::warn!(
+                        "Ошибка парсинга multiaddrs для server_id '{}': {}",
+                        s.server_id,
+                        err
+                    );
                     Vec::new()
                 });
             ServerInfo {
