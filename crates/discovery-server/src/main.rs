@@ -55,6 +55,14 @@ struct Cli {
         default_value = "/etc/letsencrypt/live/discovery.todeskai.ru/privkey.pem"
     )]
     tls_key: String,
+
+    /// UDP порт для libp2p relay (0 = отключён)
+    #[arg(long, default_value = "4001", env = "RELAY_PORT")]
+    relay_port: u16,
+
+    /// Путь к файлу Ed25519 keypair для relay node
+    #[arg(long, default_value = "/var/lib/discovery/relay_key", env = "RELAY_KEY_FILE")]
+    relay_key_file: String,
 }
 
 #[tokio::main]
@@ -101,6 +109,8 @@ async fn main() -> anyhow::Result<()> {
         admin_password_hash,
         tls_cert: cli.tls_cert,
         tls_key: cli.tls_key,
+        relay_port: cli.relay_port,
+        relay_key_file: cli.relay_key_file,
     };
 
     discovery_server::run(config).await

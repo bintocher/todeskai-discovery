@@ -22,6 +22,7 @@ pub struct AppState {
     pub admin_username: String,
     pub admin_password_hash: String,
     pub rate_limiter: RateLimiter,
+    pub relay_info: crate::relay::RelayInfoStore,
 }
 
 /// Построить маршрутизатор Axum.
@@ -47,12 +48,21 @@ pub fn build_router(state: AppState) -> Router {
 
     Router::new()
         .route("/health", get(health_check))
+        .route("/api/v1/relay-info", get(relay_info))
         .merge(auth_routes)
         .nest("/api/v1", public_routes)
         .nest("/api/v1/admin", admin_routes)
         .layer(cors)
         .layer(TraceLayer::new_for_http())
         .with_state(state)
+}
+
+/// GET /api/v1/relay-info — информация о relay ноде (публичный, без auth).
+async fn relay_info(
+    State(state): State<AppState>,
+) -> Json<crate::relay::RelayInfo> {
+    let info = state.relay_info.read().await;
+    Json(info.clone())
 }
 
 /// GET /health — проверка работоспособности сервера.

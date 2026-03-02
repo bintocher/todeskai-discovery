@@ -33,6 +33,8 @@ sea-orm = { workspace = true }
 hex = { workspace = true }
 getrandom = { workspace = true }
 url = { workspace = true }
+libp2p = { workspace = true }
+futures = { workspace = true }
 discovery-entities = { path = "../discovery-entities" }
 discovery-migration = { path = "../discovery-migration" }
 

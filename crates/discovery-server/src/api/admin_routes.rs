@@ -16,6 +16,8 @@ pub struct ServerRow {
     pub server_id: String,
     pub cluster_id: String,
     pub public_url: String,
+    pub peer_id: String,
+    pub multiaddrs: Vec<String>,
     pub version: String,
     pub last_seen: String,
     pub active: bool,
@@ -46,15 +48,24 @@ async fn list_servers(
 
     let rows = servers
         .into_iter()
-        .map(|s| ServerRow {
-            id: s.id,
-            server_id: s.server_id,
-            cluster_id: s.cluster_id,
-            public_url: s.public_url,
-            version: s.version,
-            last_seen: s.last_seen,
-            active: s.active,
-            registered_at: s.registered_at,
+        .map(|s| {
+            let multiaddrs: Vec<String> = serde_json::from_str(&s.multiaddrs)
+                .unwrap_or_else(|err| {
+                    tracing::warn!("Ошибка парсинга multiaddrs для server_id '{}': {}", s.server_id, err);
+                    Vec::new()
+                });
+            ServerRow {
+                id: s.id,
+                server_id: s.server_id,
+                cluster_id: s.cluster_id,
+                public_url: s.public_url,
+                peer_id: s.peer_id,
+                multiaddrs,
+                version: s.version,
+                last_seen: s.last_seen,
+                active: s.active,
+                registered_at: s.registered_at,
+            }
         })
         .collect();
 

@@ -3,6 +3,7 @@
 pub mod api;
 pub mod config;
 pub mod error;
+pub mod relay;
 pub mod services;
 pub mod tls;
 
@@ -26,25 +27,35 @@ pub async fn run(config: ServerConfig) -> anyhow::Result<()> {
     info!("Выполнение миграций...");
     Migrator::up(&db, None).await?;
 
-    // 3. Состояние приложения
+    // 3. Запуск relay node (P2P NAT traversal)
+    let relay_info_store = relay::new_relay_info_store();
+    let relay_port = config.relay_port;
+    if relay_port > 0 {
+        relay::start_relay(relay_port, relay_info_store.clone(), &config.relay_key_file).await?;
+    } else {
+        info!("Relay отключён (relay_port = 0)");
+    }
+
+    // 4. Состояние приложения
     let state = AppState {
         db: db.clone(),
         jwt_secret: config.jwt_secret.clone(),
         admin_username: config.admin_username.clone(),
         admin_password_hash: config.admin_password_hash.clone(),
         rate_limiter: api::rate_limit::RateLimiter::new(60, 60),
+        relay_info: relay_info_store,
     };
 
-    // 4. Маршрутизатор
+    // 5. Маршрутизатор
     let app = api::build_router(state);
 
-    // 5. Фоновая задача очистки устаревших серверов
+    // 6. Фоновая задача очистки устаревших серверов
     let db_bg = db.clone();
     tokio::spawn(async move {
         services::cleanup_service::run_cleanup_loop(db_bg).await;
     });
 
-    // 6. Graceful shutdown
+    // 7. Graceful shutdown
     let (shutdown_tx, shutdown_rx) = watch::channel(false);
 
     let shutdown_tx_clone = shutdown_tx.clone();
@@ -54,7 +65,7 @@ pub async fn run(config: ServerConfig) -> anyhow::Result<()> {
         let _ = shutdown_tx_clone.send(true);
     });
 
-    // 7. Запуск сервера
+    // 8. Запуск HTTP сервера
     info!("Сервер обнаружения запущен");
     tls::serve(&config, app, shutdown_rx).await?;
 

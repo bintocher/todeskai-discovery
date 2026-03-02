@@ -31,9 +31,17 @@ pub struct RegisterRequest {
 #[serde(rename_all = "camelCase")]
 pub struct SimpleRegisterRequest {
     pub server_id: String,
+    /// Deprecated: используется если peer_id пустой. Для P2P серверов передаётся PeerId.
+    #[serde(default)]
     pub public_url: String,
     pub version: String,
     pub public_key: String,
+    /// libp2p PeerId (base58). Новые серверы передают это вместо public_url.
+    #[serde(default)]
+    pub peer_id: String,
+    /// Multiaddrs (JSON массив строк).
+    #[serde(default)]
+    pub multiaddrs: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -54,10 +62,15 @@ pub struct HeartbeatRequest {
 #[serde(rename_all = "camelCase")]
 pub struct ServerInfo {
     pub server_id: String,
-    pub public_url: String,
+    /// libp2p PeerId (base58).
+    pub peer_id: String,
+    /// Multiaddrs сервера.
+    pub multiaddrs: Vec<String>,
     pub public_key: String,
     pub version: String,
     pub last_seen: String,
+    /// Deprecated: оставлено для обратной совместимости.
+    pub public_url: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -118,6 +131,8 @@ async fn register_cluster(
             public_url: req.public_url,
             version: req.version,
             public_key: req.public_key,
+            peer_id: String::new(),
+            multiaddrs: "[]".into(),
         },
     )
     .await?;
@@ -139,14 +154,16 @@ async fn register_simple(
     State(state): State<AppState>,
     Json(req): Json<SimpleRegisterRequest>,
 ) -> Result<Json<RegisterResponse>, AppError> {
-    if req.server_id.is_empty() || req.public_url.is_empty() {
-        return Err(AppError::BadRequest(
-            "server_id и public_url обязательны".into(),
-        ));
+    if req.server_id.is_empty() {
+        return Err(AppError::BadRequest("server_id обязателен".into()));
     }
 
-    // SSRF защита: схема + приватные IP
-    validate_public_url(&req.public_url)?;
+    // Валидация public_url только если она указана (для legacy)
+    if !req.public_url.is_empty() {
+        validate_public_url(&req.public_url)?;
+    }
+
+    let multiaddrs_json = serde_json::to_string(&req.multiaddrs).unwrap_or_else(|_| "[]".into());
 
     let server_id = registry_service::register_server(
         &state.db,
@@ -156,6 +173,8 @@ async fn register_simple(
             public_url: req.public_url,
             version: req.version,
             public_key: req.public_key,
+            peer_id: req.peer_id,
+            multiaddrs: multiaddrs_json,
         },
     )
     .await?;
@@ -198,13 +217,22 @@ async fn resolve_server(
     }
 
     match get_server_by_id(&state.db, &req.server_id).await? {
-        Some(server) => Ok(Json(ServerInfo {
-            server_id: server.server_id,
-            public_url: server.public_url,
-            public_key: server.public_key,
-            version: server.version,
-            last_seen: server.last_seen,
-        })),
+        Some(server) => {
+            let multiaddrs: Vec<String> = serde_json::from_str(&server.multiaddrs)
+                .unwrap_or_else(|err| {
+                    tracing::warn!("Ошибка парсинга multiaddrs для server_id '{}': {}", server.server_id, err);
+                    Vec::new()
+                });
+            Ok(Json(ServerInfo {
+                server_id: server.server_id,
+                peer_id: server.peer_id,
+                multiaddrs,
+                public_url: server.public_url,
+                public_key: server.public_key,
+                version: server.version,
+                last_seen: server.last_seen,
+            }))
+        }
         None => Err(AppError::NotFound(format!(
             "Сервер {} не найден",
             req.server_id
@@ -222,12 +250,21 @@ async fn get_cluster(
 
     let server_infos = servers
         .into_iter()
-        .map(|s| ServerInfo {
-            server_id: s.server_id,
-            public_url: s.public_url,
-            public_key: s.public_key,
-            version: s.version,
-            last_seen: s.last_seen,
+        .map(|s| {
+            let multiaddrs: Vec<String> = serde_json::from_str(&s.multiaddrs)
+                .unwrap_or_else(|err| {
+                    tracing::warn!("Ошибка парсинга multiaddrs для server_id '{}': {}", s.server_id, err);
+                    Vec::new()
+                });
+            ServerInfo {
+                server_id: s.server_id,
+                peer_id: s.peer_id,
+                multiaddrs,
+                public_url: s.public_url,
+                public_key: s.public_key,
+                version: s.version,
+                last_seen: s.last_seen,
+            }
         })
         .collect();
 
@@ -252,7 +289,8 @@ async fn deregister(
     Ok(Json(serde_json::json!({ "ok": true })))
 }
 
-/// Валидация public_url: схема http(s) + блокировка приватных IP/localhost.
+/// Валидация public_url: проверка схемы http(s) и блокировка loopback-адресов (SSRF).
+/// Приватные IP разрешены (серверы за NAT), но loopback (127.0.0.0/8, [::1]) — запрещены.
 fn validate_public_url(url: &str) -> Result<(), AppError> {
     let parsed =
         url::Url::parse(url).map_err(|_| AppError::BadRequest("Некорректный URL".into()))?;
@@ -266,29 +304,22 @@ fn validate_public_url(url: &str) -> Result<(), AppError> {
         }
     }
 
-    if let Some(host) = parsed.host_str() {
-        let lower = host.to_lowercase();
-        if lower == "localhost" || lower == "127.0.0.1" || lower == "::1" || lower == "0.0.0.0" {
+    let host = parsed
+        .host_str()
+        .ok_or_else(|| AppError::BadRequest("public_url не содержит хост".into()))?;
+
+    // Блокируем loopback-адреса (защита от SSRF)
+    if host == "localhost" {
+        return Err(AppError::BadRequest(
+            "public_url не может указывать на localhost".into(),
+        ));
+    }
+    if let Ok(ip) = host.parse::<std::net::IpAddr>() {
+        if ip.is_loopback() {
             return Err(AppError::BadRequest(
-                "public_url не может указывать на localhost".into(),
+                "public_url не может указывать на loopback-адрес (127.0.0.0/8, [::1])".into(),
             ));
         }
-        // Блокировка приватных IP-диапазонов
-        if let Ok(ip) = host.parse::<std::net::IpAddr>() {
-            let is_private = match ip {
-                std::net::IpAddr::V4(v4) => {
-                    v4.is_private() || v4.is_loopback() || v4.is_link_local()
-                }
-                std::net::IpAddr::V6(v6) => v6.is_loopback(),
-            };
-            if is_private {
-                return Err(AppError::BadRequest(
-                    "public_url не может указывать на приватный IP".into(),
-                ));
-            }
-        }
-    } else {
-        return Err(AppError::BadRequest("public_url не содержит хост".into()));
     }
 
     Ok(())

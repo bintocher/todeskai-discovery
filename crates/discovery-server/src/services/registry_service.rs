@@ -15,6 +15,10 @@ pub struct RegisterData {
     pub public_url: String,
     pub version: String,
     pub public_key: String,
+    /// libp2p PeerId (base58). Пустая строка для legacy серверов.
+    pub peer_id: String,
+    /// Multiaddrs (JSON строка). По умолчанию "[]".
+    pub multiaddrs: String,
 }
 
 /// Зарегистрировать или обновить сервер.
@@ -32,11 +36,19 @@ pub async fn register_server(
         .await?;
 
     if let Some(record) = existing {
+        // Проверяем, что public_key совпадает — защита от перехвата server_id
+        if record.public_key != data.public_key {
+            return Err(AppError::Unauthorized(
+                "public_key не совпадает с зарегистрированным — обновление запрещено".into(),
+            ));
+        }
+
         // Обновляем существующую запись
         let mut model: ActiveModel = record.into();
         model.public_url = Set(data.public_url);
+        model.peer_id = Set(data.peer_id);
+        model.multiaddrs = Set(data.multiaddrs);
         model.version = Set(data.version);
-        model.public_key = Set(data.public_key);
         model.last_seen = Set(now);
         model.active = Set(true);
         model.update(db).await?;
@@ -47,6 +59,8 @@ pub async fn register_server(
             server_id: Set(data.server_id.clone()),
             cluster_id: Set(data.cluster_id),
             public_url: Set(data.public_url),
+            peer_id: Set(data.peer_id),
+            multiaddrs: Set(data.multiaddrs),
             version: Set(data.version),
             public_key: Set(data.public_key),
             last_seen: Set(now.clone()),
