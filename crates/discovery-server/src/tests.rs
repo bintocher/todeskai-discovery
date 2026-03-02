@@ -166,6 +166,7 @@ mod tests {
                 admin_username: "admin".to_string(),
                 admin_password_hash: hash_password("admin123"),
                 rate_limiter: RateLimiter::new(100, 60),
+                relay_info: crate::relay::new_relay_info_store(),
             };
 
             build_router(state)

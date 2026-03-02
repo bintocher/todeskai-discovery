@@ -17,8 +17,14 @@ pub struct Model {
     /// Идентификатор кластера
     pub cluster_id: String,
 
-    /// Публичный URL сервера
+    /// Публичный URL сервера (deprecated, используется если peer_id пустой)
     pub public_url: String,
+
+    /// libp2p PeerId (base58). Пустая строка для legacy серверов.
+    pub peer_id: String,
+
+    /// Multiaddrs (JSON массив строк)
+    pub multiaddrs: String,
 
     /// Версия сервера
     pub version: String,
