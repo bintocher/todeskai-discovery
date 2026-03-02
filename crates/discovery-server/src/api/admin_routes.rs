@@ -49,9 +49,13 @@ async fn list_servers(
     let rows = servers
         .into_iter()
         .map(|s| {
-            let multiaddrs: Vec<String> = serde_json::from_str(&s.multiaddrs)
-                .unwrap_or_else(|err| {
-                    tracing::warn!("Ошибка парсинга multiaddrs для server_id '{}': {}", s.server_id, err);
+            let multiaddrs: Vec<String> =
+                serde_json::from_str(&s.multiaddrs).unwrap_or_else(|err| {
+                    tracing::warn!(
+                        "Ошибка парсинга multiaddrs для server_id '{}': {}",
+                        s.server_id,
+                        err
+                    );
                     Vec::new()
                 });
             ServerRow {

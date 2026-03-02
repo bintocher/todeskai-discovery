@@ -61,7 +61,11 @@ struct Cli {
     relay_port: u16,
 
     /// Путь к файлу Ed25519 keypair для relay node
-    #[arg(long, default_value = "/var/lib/discovery/relay_key", env = "RELAY_KEY_FILE")]
+    #[arg(
+        long,
+        default_value = "/var/lib/discovery/relay_key",
+        env = "RELAY_KEY_FILE"
+    )]
     relay_key_file: String,
 }
 
