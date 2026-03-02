@@ -962,7 +962,7 @@ dependencies = [
 
 [[package]]
 name = "discovery-entities"
-version = "0.2.3"
+version = "0.3.0"
 dependencies = [
  "chrono",
  "sea-orm",
@@ -972,7 +972,7 @@ dependencies = [
 
 [[package]]
 name = "discovery-migration"
-version = "0.2.3"
+version = "0.3.0"
 dependencies = [
  "discovery-entities",
  "sea-orm-migration",
@@ -981,7 +981,7 @@ dependencies = [
 
 [[package]]
 name = "discovery-server"
-version = "0.2.3"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "axum",
