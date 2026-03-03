@@ -111,6 +111,7 @@ pub async fn start_relay(
     listen_port: u16,
     info_store: RelayInfoStore,
     relay_key_file: &str,
+    external_ip: Option<&str>,
 ) -> anyhow::Result<()> {
     let keypair = load_or_generate_keypair(relay_key_file)?;
     let local_peer_id = keypair.public().to_peer_id();
@@ -124,6 +125,18 @@ pub async fn start_relay(
         .map_err(|e| anyhow::anyhow!("Ошибка парсинга listen addr: {e}"))?;
 
     swarm.listen_on(listen_addr)?;
+
+    // Регистрируем внешний адрес — без этого relay::Behaviour не включает
+    // адреса в ответ на reservation (NoAddressesInReservation).
+    if let Some(ip) = external_ip {
+        let external_addr: Multiaddr = format!("/ip4/{ip}/udp/{listen_port}/quic-v1")
+            .parse()
+            .map_err(|e| anyhow::anyhow!("Ошибка парсинга external addr: {e}"))?;
+        swarm.add_external_address(external_addr.clone());
+        tracing::info!(addr = %external_addr, "Relay: внешний адрес зарегистрирован");
+    } else {
+        tracing::warn!("Relay: внешний IP не задан (--relay-external-ip). Reservation может не работать!");
+    }
 
     // Сохраняем PeerId сразу
     {

@@ -69,6 +69,11 @@ struct Cli {
         env = "RELAY_KEY_FILE"
     )]
     relay_key_file: String,
+
+    /// Внешний IP адрес relay (обязателен для серверов за NAT или VPS).
+    /// Без этого relay не может включить адреса в ответ на reservation.
+    #[arg(long, env = "RELAY_EXTERNAL_IP")]
+    relay_external_ip: Option<String>,
 }
 
 #[tokio::main]
@@ -117,6 +122,7 @@ async fn main() -> anyhow::Result<()> {
         tls_key: cli.tls_key,
         relay_port: cli.relay_port,
         relay_key_file: cli.relay_key_file,
+        relay_external_ip: cli.relay_external_ip,
     };
 
     discovery_server::run(config).await
