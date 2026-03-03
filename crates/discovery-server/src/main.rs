@@ -56,8 +56,10 @@ struct Cli {
     )]
     tls_key: String,
 
-    /// UDP порт для libp2p relay (0 = отключён)
-    #[arg(long, default_value = "4001", env = "RELAY_PORT")]
+    /// UDP порт для libp2p relay (0 = отключён). По умолчанию 443 — совпадает
+    /// с HTTPS (TCP), но UDP и TCP не конфликтуют. Порт 443/udp реже блокируется
+    /// ISP/NAT, чем нестандартные порты (4001).
+    #[arg(long, default_value = "443", env = "RELAY_PORT")]
     relay_port: u16,
 
     /// Путь к файлу Ed25519 keypair для relay node
