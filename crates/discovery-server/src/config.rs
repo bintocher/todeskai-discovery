@@ -34,6 +34,10 @@ pub struct ServerConfig {
 
     /// Путь к файлу Ed25519 keypair для relay node
     pub relay_key_file: String,
+
+    /// Внешний IP адрес relay (для NAT). Без этого relay не может сконструировать
+    /// circuit-адреса в ответе на reservation.
+    pub relay_external_ip: Option<String>,
 }
 
 #[derive(Debug, Clone)]
