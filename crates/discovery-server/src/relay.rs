@@ -178,9 +178,19 @@ async fn relay_event_loop(
                 let full_addr = address.with(libp2p::multiaddr::Protocol::P2p(local_peer_id));
                 tracing::info!(addr = %full_addr, "Relay: слушаем на адресе");
 
+                // Не публикуем localhost/loopback — бесполезны для удалённых клиентов
+                let is_loopback = full_addr.iter().any(|p| match p {
+                    libp2p::multiaddr::Protocol::Ip4(ip) => ip.is_loopback(),
+                    libp2p::multiaddr::Protocol::Ip6(ip) => ip.is_loopback(),
+                    _ => false,
+                });
+                if is_loopback {
+                    tracing::debug!(addr = %full_addr, "Relay: пропускаем loopback адрес");
+                    continue;
+                }
+
                 let mut info = info_store.write().await;
                 let addr_str = full_addr.to_string();
-                // O(n) поиск допустим: relay имеет 1-3 listen-адреса, HashSet — избыточен
                 if !info.multiaddrs.contains(&addr_str) {
                     info.multiaddrs.push(addr_str);
                 }
