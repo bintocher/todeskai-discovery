@@ -126,11 +126,17 @@ pub async fn start_relay(
 
     let mut swarm = build_relay_swarm(keypair.clone())?;
 
-    // QUIC (UDP) + TCP (fallback для сетей с блокировкой UDP)
-    let listen_addrs = [
-        format!("/ip4/0.0.0.0/udp/{quic_port}/quic-v1"),
-        format!("/ip4/0.0.0.0/tcp/{tcp_port}"),
-    ];
+    // QUIC (UDP) + TCP (fallback для сетей с блокировкой UDP).
+    // Порт 0 = транспорт отключён.
+    let listen_addrs: Vec<String> = [
+        (quic_port, format!("/ip4/0.0.0.0/udp/{quic_port}/quic-v1")),
+        (tcp_port, format!("/ip4/0.0.0.0/tcp/{tcp_port}")),
+    ]
+    .into_iter()
+    .filter(|(port, _)| *port > 0)
+    .map(|(_, addr)| addr)
+    .collect();
+
     for addr_str in &listen_addrs {
         let addr: Multiaddr = addr_str
             .parse()
@@ -141,10 +147,15 @@ pub async fn start_relay(
     // Регистрируем внешние адреса — без этого relay::Behaviour не включает
     // адреса в ответ на reservation (NoAddressesInReservation).
     if let Some(ip) = external_ip {
-        let external_addrs = [
-            format!("/ip4/{ip}/udp/{quic_port}/quic-v1"),
-            format!("/ip4/{ip}/tcp/{tcp_port}"),
-        ];
+        let external_addrs: Vec<String> = [
+            (quic_port, format!("/ip4/{ip}/udp/{quic_port}/quic-v1")),
+            (tcp_port, format!("/ip4/{ip}/tcp/{tcp_port}")),
+        ]
+        .into_iter()
+        .filter(|(port, _)| *port > 0)
+        .map(|(_, addr)| addr)
+        .collect();
+
         for addr_str in &external_addrs {
             let addr: Multiaddr = addr_str
                 .parse()
