@@ -29,8 +29,11 @@ pub struct ServerConfig {
     /// Путь к PEM-файлу приватного ключа (для tls_mode = cert)
     pub tls_key: String,
 
-    /// UDP порт для libp2p relay (0 = отключён)
+    /// UDP порт для libp2p relay QUIC (0 = отключён)
     pub relay_port: u16,
+
+    /// TCP порт для libp2p relay (fallback при блокировке UDP). 0 = отключён.
+    pub relay_tcp_port: u16,
 
     /// Путь к файлу Ed25519 keypair для relay node
     pub relay_key_file: String,
