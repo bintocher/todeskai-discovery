@@ -108,7 +108,7 @@ fn load_or_generate_keypair(path: &str) -> anyhow::Result<Keypair> {
 /// слушает на QUIC (UDP) + TCP (fallback для сетей с блокировкой UDP).
 /// Обновляет `info_store` при появлении новых listen-адресов.
 pub async fn start_relay(
-    listen_port: u16,
+    quic_port: u16,
     tcp_port: u16,
     info_store: RelayInfoStore,
     relay_key_file: &str,
@@ -119,43 +119,38 @@ pub async fn start_relay(
 
     tracing::info!(
         peer_id = %local_peer_id,
-        quic_port = listen_port,
+        quic_port = quic_port,
         tcp_port = tcp_port,
         "Запуск relay node (QUIC + TCP)"
     );
 
     let mut swarm = build_relay_swarm(keypair.clone())?;
 
-    // QUIC (UDP)
-    let quic_addr: Multiaddr = format!("/ip4/0.0.0.0/udp/{listen_port}/quic-v1")
-        .parse()
-        .map_err(|e| anyhow::anyhow!("Ошибка парсинга QUIC addr: {e}"))?;
-    swarm.listen_on(quic_addr)?;
-
-    // TCP (fallback для сетей с блокировкой UDP)
-    if tcp_port > 0 {
-        let tcp_addr: Multiaddr = format!("/ip4/0.0.0.0/tcp/{tcp_port}")
+    // QUIC (UDP) + TCP (fallback для сетей с блокировкой UDP)
+    let listen_addrs = [
+        format!("/ip4/0.0.0.0/udp/{quic_port}/quic-v1"),
+        format!("/ip4/0.0.0.0/tcp/{tcp_port}"),
+    ];
+    for addr_str in &listen_addrs {
+        let addr: Multiaddr = addr_str
             .parse()
-            .map_err(|e| anyhow::anyhow!("Ошибка парсинга TCP addr: {e}"))?;
-        swarm.listen_on(tcp_addr)?;
-        tracing::info!(port = tcp_port, "Relay: TCP listener запущен");
+            .map_err(|e| anyhow::anyhow!("Ошибка парсинга адреса '{addr_str}': {e}"))?;
+        swarm.listen_on(addr)?;
     }
 
     // Регистрируем внешние адреса — без этого relay::Behaviour не включает
     // адреса в ответ на reservation (NoAddressesInReservation).
     if let Some(ip) = external_ip {
-        let quic_external: Multiaddr = format!("/ip4/{ip}/udp/{listen_port}/quic-v1")
-            .parse()
-            .map_err(|e| anyhow::anyhow!("Ошибка парсинга external QUIC addr: {e}"))?;
-        swarm.add_external_address(quic_external.clone());
-        tracing::info!(addr = %quic_external, "Relay: внешний QUIC адрес зарегистрирован");
-
-        if tcp_port > 0 {
-            let tcp_external: Multiaddr = format!("/ip4/{ip}/tcp/{tcp_port}")
+        let external_addrs = [
+            format!("/ip4/{ip}/udp/{quic_port}/quic-v1"),
+            format!("/ip4/{ip}/tcp/{tcp_port}"),
+        ];
+        for addr_str in &external_addrs {
+            let addr: Multiaddr = addr_str
                 .parse()
-                .map_err(|e| anyhow::anyhow!("Ошибка парсинга external TCP addr: {e}"))?;
-            swarm.add_external_address(tcp_external.clone());
-            tracing::info!(addr = %tcp_external, "Relay: внешний TCP адрес зарегистрирован");
+                .map_err(|e| anyhow::anyhow!("Ошибка парсинга external addr '{addr_str}': {e}"))?;
+            swarm.add_external_address(addr.clone());
+            tracing::info!(addr = %addr, "Relay: внешний адрес зарегистрирован");
         }
     } else {
         tracing::warn!("Relay: внешний IP не задан (--relay-external-ip). Reservation может не работать!");
