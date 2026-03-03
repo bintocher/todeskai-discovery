@@ -33,6 +33,7 @@ pub async fn run(config: ServerConfig) -> anyhow::Result<()> {
     if relay_port > 0 {
         relay::start_relay(
             relay_port,
+            config.relay_tcp_port,
             relay_info_store.clone(),
             &config.relay_key_file,
             config.relay_external_ip.as_deref(),

@@ -55,7 +55,7 @@ getrandom = { version = "0.3", features = ["std"] }
 url = "2"
 
 # P2P Relay
-libp2p = { version = "0.56", features = ["tokio", "quic", "noise", "yamux", "relay", "identify", "ping", "macros"] }
+libp2p = { version = "0.56", features = ["tokio", "tcp", "quic", "noise", "yamux", "relay", "identify", "ping", "macros"] }
 futures = "0.3"
 
 [profile.release]

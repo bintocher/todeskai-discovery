@@ -56,11 +56,16 @@ struct Cli {
     )]
     tls_key: String,
 
-    /// UDP порт для libp2p relay (0 = отключён). По умолчанию 443 — совпадает
+    /// UDP порт для libp2p relay QUIC (0 = отключён). По умолчанию 443 — совпадает
     /// с HTTPS (TCP), но UDP и TCP не конфликтуют. Порт 443/udp реже блокируется
     /// ISP/NAT, чем нестандартные порты (4001).
     #[arg(long, default_value = "443", env = "RELAY_PORT")]
     relay_port: u16,
+
+    /// TCP порт для libp2p relay (fallback при блокировке UDP/QUIC).
+    /// По умолчанию 4001. Если 0 — TCP relay отключён.
+    #[arg(long, default_value = "4001", env = "RELAY_TCP_PORT")]
+    relay_tcp_port: u16,
 
     /// Путь к файлу Ed25519 keypair для relay node
     #[arg(
@@ -121,6 +126,7 @@ async fn main() -> anyhow::Result<()> {
         tls_cert: cli.tls_cert,
         tls_key: cli.tls_key,
         relay_port: cli.relay_port,
+        relay_tcp_port: cli.relay_tcp_port,
         relay_key_file: cli.relay_key_file,
         relay_external_ip: cli.relay_external_ip,
     };
